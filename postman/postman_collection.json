@@ -1,0 +1,295 @@
+{
+  "info": {
+    "_postman_id": "e65f5097-6901-4f13-8b33-cba36b4c960d",
+    "name": "University Campus Management System",
+    "description": "Set baseUrl, log in with the seeded users, then run requests in order to populate IDs. Requests demonstrate success and common validation/auth/RBAC/ownership/not-found/duplicate responses.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "adminToken", "value": "" },
+    { "key": "facultyToken", "value": "" },
+    { "key": "studentToken", "value": "" },
+    { "key": "adminId", "value": "" },
+    { "key": "facultyId", "value": "" },
+    { "key": "studentId", "value": "" },
+    { "key": "otherStudentId", "value": "" },
+    { "key": "courseId", "value": "" },
+    { "key": "newCourseId", "value": "" },
+    { "key": "deleteCourseId", "value": "" },
+    { "key": "attendanceId", "value": "" },
+    { "key": "refreshToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check (200)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/health" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('health is ready', function () { pm.response.to.have.status(200); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Admin login (200)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"admin@campus.example\",\"password\":\"CampusAdmin123!\"}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('login succeeds', function () { pm.response.to.have.status(200); });", "const body = pm.response.json(); pm.collectionVariables.set('adminToken', body.data.accessToken); pm.collectionVariables.set('refreshToken', body.data.refreshToken); pm.collectionVariables.set('adminId', body.data.user.id);"] } }]
+        },
+        {
+          "name": "Faculty login (200)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"faculty@campus.example\",\"password\":\"CampusFaculty123!\"}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('login succeeds', function () { pm.response.to.have.status(200); });", "const body = pm.response.json(); pm.collectionVariables.set('facultyToken', body.data.accessToken); pm.collectionVariables.set('facultyId', body.data.user.id);"] } }]
+        },
+        {
+          "name": "Student login (200)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"student@campus.example\",\"password\":\"CampusStudent123!\"}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('login succeeds', function () { pm.response.to.have.status(200); });", "const body = pm.response.json(); pm.collectionVariables.set('studentToken', body.data.accessToken); pm.collectionVariables.set('studentId', body.data.user.id);"] } }]
+        },
+        {
+          "name": "Invalid credentials (401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"admin@campus.example\",\"password\":\"incorrect-password\"}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('invalid credentials rejected', function () { pm.response.to.have.status(401); });"] } }]
+        },
+        {
+          "name": "Public student registration (201)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"name\":\"Postman Student\",\"email\":\"{{$randomEmail}}\",\"password\":\"CampusStudent123!\",\"role\":\"student\",\"enrollmentNo\":\"STU-{{$timestamp}}\"}" },
+            "url": "{{baseUrl}}/api/auth/register"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('student registered', function () { pm.response.to.have.status(201); });"] } }]
+        },
+        {
+          "name": "Public registration cannot assign admin role (403)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"name\":\"Escalation Attempt\",\"email\":\"{{$randomEmail}}\",\"password\":\"CampusStudent123!\",\"role\":\"admin\",\"enrollmentNo\":\"STU-9999\"}" },
+            "url": "{{baseUrl}}/api/auth/register"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('role escalation rejected', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "Invalid registration body (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"not-an-email\"}" },
+            "url": "{{baseUrl}}/api/auth/register"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('invalid body rejected', function () { pm.response.to.have.status(400); });"] } }]
+        },
+        {
+          "name": "Refresh access token (200)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"refreshToken\":\"{{refreshToken}}\"}" },
+            "url": "{{baseUrl}}/api/auth/refresh"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('refresh succeeds', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Logout and revoke refresh token (200)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/auth/logout" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('logout succeeds', function () { pm.response.to.have.status(200); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Current user without token (401)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/users/me" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('authentication required', function () { pm.response.to.have.status(401); });"] } }]
+        },
+        {
+          "name": "Current user (200)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/users/me" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('profile returned without password', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().data.user.password).to.be.undefined; });"] } }]
+        },
+        {
+          "name": "List users and capture seeded student IDs (200)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/users?role=student&page=1&limit=20" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin can list users', function () { pm.response.to.have.status(200); });", "const users = pm.response.json().data.users; const first = users.find(function (user) { return user.email === 'student@campus.example'; }); const second = users.find(function (user) { return user.email === 'student2@campus.example'; }); if (first) pm.collectionVariables.set('studentId', first._id); if (second) pm.collectionVariables.set('otherStudentId', second._id);"] } }]
+        },
+        {
+          "name": "Update own profile (200)",
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"department\":\"Computer Science\"}" }, "url": "{{baseUrl}}/api/users/me" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('profile updated', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Admin creates faculty user (201)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Postman Faculty\",\"email\":\"{{$randomEmail}}\",\"password\":\"CampusFaculty123!\",\"role\":\"faculty\",\"department\":\"Computer Science\"}" }, "url": "{{baseUrl}}/api/users" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('faculty account created', function () { pm.response.to.have.status(201); });"] } }]
+        },
+        {
+          "name": "Student cannot list users (403)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/users" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('RBAC enforced', function () { pm.response.to.have.status(403); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Courses and enrollment",
+      "item": [
+        {
+          "name": "Browse courses and capture CS101 ID (200)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/courses?search=CS101" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('course search works', function () { pm.response.to.have.status(200); });", "const course = pm.response.json().data.courses.find(function (item) { return item.code === 'CS101'; }); if (course) pm.collectionVariables.set('courseId', course._id);"] } }]
+        },
+        {
+          "name": "Student cannot create course (403)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"code\":\"NOPE101\",\"title\":\"Forbidden\",\"department\":\"Computer Science\",\"credits\":3}" }, "url": "{{baseUrl}}/api/courses" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('RBAC enforced', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "Invalid course body (400)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"code\":\"BAD101\",\"title\":\"Missing fields\"}" }, "url": "{{baseUrl}}/api/courses" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('validation enforced', function () { pm.response.to.have.status(400); });"] } }]
+        },
+        {
+          "name": "Create course (201)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"code\":\"TEST{{$timestamp}}\",\"title\":\"Postman Integration Course\",\"department\":\"Computer Science\",\"credits\":3,\"sections\":[\"A\"]}" }, "url": "{{baseUrl}}/api/courses" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('course created', function () { pm.response.to.have.status(201); });", "pm.collectionVariables.set('newCourseId', pm.response.json().data.course._id);"] } }]
+        },
+        {
+          "name": "Read created course (200)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/courses/{{newCourseId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('course details returned', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Update course (200)",
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"title\":\"Updated Postman Integration Course\"}" }, "url": "{{baseUrl}}/api/courses/{{newCourseId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('course updated', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Create course to delete (201)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"code\":\"DEL{{$timestamp}}\",\"title\":\"Temporary Course\",\"department\":\"Computer Science\",\"credits\":1,\"sections\":[\"A\"]}" }, "url": "{{baseUrl}}/api/courses" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('temporary course created', function () { pm.response.to.have.status(201); });", "pm.collectionVariables.set('deleteCourseId', pm.response.json().data.course._id);"] } }]
+        },
+        {
+          "name": "Delete course (200)",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/courses/{{deleteCourseId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('course deleted', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Missing course (404)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/courses/507f1f77bcf86cd799439011" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('missing course returns 404', function () { pm.response.to.have.status(404); });"] } }]
+        },
+        {
+          "name": "Assign faculty to new course (200)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"facultyId\":\"{{facultyId}}\",\"section\":\"A\"}" }, "url": "{{baseUrl}}/api/courses/{{newCourseId}}/assign-faculty" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('faculty assigned', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Enroll student (201)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"studentId\":\"{{studentId}}\",\"section\":\"A\"}" }, "url": "{{baseUrl}}/api/courses/{{newCourseId}}/enroll" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('enrollment created', function () { pm.response.to.have.status(201); });"] } }]
+        },
+        {
+          "name": "Duplicate enrollment (409)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"studentId\":\"{{studentId}}\",\"section\":\"A\"}" }, "url": "{{baseUrl}}/api/courses/{{newCourseId}}/enroll" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('duplicate enrollment rejected', function () { pm.response.to.have.status(409); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Attendance and announcements",
+      "item": [
+        {
+          "name": "Mark attendance on newly assigned course (201)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"course\":\"{{newCourseId}}\",\"section\":\"A\",\"date\":\"{{$isoTimestamp}}\",\"records\":[{\"student\":\"{{studentId}}\",\"status\":\"present\"}]}" }, "url": "{{baseUrl}}/api/attendance" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('attendance marked', function () { pm.response.to.have.status(201); });", "if (pm.response.code === 201) pm.collectionVariables.set('attendanceId', pm.response.json().data.attendance._id);"] } }]
+        },
+        {
+          "name": "Correct attendance with audit reason (200)",
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"Correcting a verified entry\",\"records\":[{\"student\":\"{{studentId}}\",\"status\":\"absent\"}]}" }, "url": "{{baseUrl}}/api/attendance/{{attendanceId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('attendance correction recorded', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().data.attendance.auditLog.length).to.be.greaterThan(0); });"] } }]
+        },
+        {
+          "name": "Student cannot mark attendance (403)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"course\":\"{{newCourseId}}\",\"section\":\"A\",\"date\":\"{{$isoTimestamp}}\",\"records\":[{\"student\":\"{{studentId}}\",\"status\":\"present\"}]}" }, "url": "{{baseUrl}}/api/attendance" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('attendance RBAC enforced', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "Duplicate attendance session (409)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"course\":\"{{newCourseId}}\",\"section\":\"A\",\"date\":\"{{$isoTimestamp}}\",\"records\":[{\"student\":\"{{studentId}}\",\"status\":\"present\"}]}" }, "url": "{{baseUrl}}/api/attendance" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('duplicate class session rejected', function () { pm.response.to.have.status(409); });"] } }]
+        },
+        {
+          "name": "Student cannot view another student's attendance (403)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/attendance/student/{{otherStudentId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('ownership enforced', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "View own attendance (200)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/attendance/student/{{studentId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('own attendance is visible', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Admin university announcement (201)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"title\":\"Postman campus notice\",\"message\":\"A sample university-wide notice.\",\"scope\":\"university\"}" }, "url": "{{baseUrl}}/api/announcements" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('announcement created', function () { pm.response.to.have.status(201); });"] } }]
+        },
+        {
+          "name": "Faculty section announcement (201)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"title\":\"Postman section announcement\",\"message\":\"A section-only update.\",\"scope\":\"section\",\"course\":\"{{newCourseId}}\",\"section\":\"A\"}" }, "url": "{{baseUrl}}/api/announcements" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('faculty announcement created', function () { pm.response.to.have.status(201); });"] } }]
+        },
+        {
+          "name": "Faculty cannot create university announcement (403)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"title\":\"Forbidden notice\",\"message\":\"Not allowed.\",\"scope\":\"university\"}" }, "url": "{{baseUrl}}/api/announcements" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('scope restriction enforced', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "Read announcements (200)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/announcements" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('visible announcements returned', function () { pm.response.to.have.status(200); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Low attendance report (200)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/reports/low-attendance?threshold=75" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('low attendance report returned', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Course summary report (200)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/reports/course-summary" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('course summary returned', function () { pm.response.to.have.status(200); });"] } }]
+        }
+      ]
+    }
+  ]
+}
